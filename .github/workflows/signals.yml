@@ -1,0 +1,28 @@
+name: Forex Signal Alerts
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+    - cron: "0 9 * * *"
+    - cron: "0 14 * * *"
+    - cron: "0 19 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  send-signals:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install -r forex_bot/requirements.txt
+      - name: Run signal alert
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+        run: python3 forex_bot/alert.py

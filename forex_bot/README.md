@@ -1,59 +1,24 @@
 # Forex Signal Bot
 
-Telegram bot that scans forex pairs, generates BUY/SELL signals with
-stop-loss/take-profit, and backtests the strategy -- using real market data
-from Alpha Vantage.
+Telegram forex signal bot using Alpha Vantage market data. It supports interactive Telegram commands and scheduled push alerts through GitHub Actions.
 
-## Setup
+## Scheduled alerts (free GitHub Actions)
 
-1. **Get a Telegram bot token**: message @BotFather on Telegram, `/newbot`.
-2. **Get a free Alpha Vantage API key**: https://www.alphavantage.co/support/#api-key
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-   (On iSH / mobile, you likely want this running on a VPS or always-on
-   machine instead, since iSH suspends in the background.)
-4. Set your keys as environment variables:
-   ```
-   export TELEGRAM_BOT_TOKEN="123456:your-token"
-   export ALPHA_VANTAGE_API_KEY="your-key"
-   ```
-5. Run it:
-   ```
-   python3 bot.py
-   ```
+1. Create a Telegram bot with @BotFather and copy its token.
+2. Get your Telegram chat ID by messaging your bot, then checking the Telegram Bot API getUpdates endpoint.
+3. Get a free Alpha Vantage API key from https://www.alphavantage.co/support/#api-key.
+4. In GitHub, open **Settings → Secrets and variables → Actions** and add:
+   - TELEGRAM_BOT_TOKEN
+   - TELEGRAM_CHAT_ID
+   - ALPHA_VANTAGE_API_KEY
+5. The workflow runs at 7am, 11am, 4pm and 9pm Rwanda time (UTC+2). You can also run it manually from the Actions tab.
 
-## Commands
+## Interactive Telegram bot
 
-- `/signal EURUSD` — current signal on daily candles
-- `/signal EURUSD 15min` — current signal on 15-minute candles
-- `/scan` — scans the WATCHLIST in `config.py` for fresh signals
-- `/backtest EURUSD` — backtests the last ~100 daily candles
-- `/backtest EURUSD full` — backtests full available history (slower)
+Install dependencies with `pip install -r requirements.txt`, set TELEGRAM_BOT_TOKEN and ALPHA_VANTAGE_API_KEY as environment variables, then run `python3 bot.py`. The interactive bot needs an always-on host.
 
-## How the strategy works
+Commands: `/start`, `/signal EURUSD`, `/signal EURUSD 15min`, `/scan`, `/backtest EURUSD`, `/backtest EURUSD full`.
 
-- **Signal**: EMA(12) crosses EMA(26) = trend shift. RSI filters out
-  signals when the market's already overbought/oversold in that direction.
-- **Stop loss / take profit**: sized off ATR (volatility), not a fixed pip
-  count, so they scale per-pair automatically. Default is a 2:1 reward-to-risk
-  ratio (tune `ATR_SL_MULTIPLIER` / `ATR_TP_MULTIPLIER` in `config.py`).
-- **Backtest**: walks forward candle by candle, opens one position at a
-  time, closes on SL or TP, reports win rate and net pips.
+## Strategy
 
-## Known limitations / next steps
-
-- Alpha Vantage free tier: 25 requests/day, 5/minute — `/scan` pauses
-  between pairs to respect this. Upgrade to a paid key or switch to
-  Twelve Data / OANDA's v20 API if you outgrow it.
-- This is signal-only — it does not place trades. Hooking it up to a
-  broker's API (e.g. OANDA v20, MetaTrader via MT bridge) for live
-  execution is a natural next step once you've paper-traded it.
-- The strategy here (EMA crossover + RSI) is intentionally simple and
-  auditable. You'll likely want to backtest alternative strategies
-  (e.g. adding a trend filter, multi-timeframe confirmation) before
-  trusting it with real capital.
-- **Not financial advice** — this is a decision-support tool. Backtest
-  results don't guarantee future performance, and forex trading carries
-  real risk of loss.
+EMA(12)/EMA(26) crossover with an RSI filter; ATR-based stop loss and take profit. Backtest and paper-trade before risking real money. This is a decision-support tool, not financial advice.
