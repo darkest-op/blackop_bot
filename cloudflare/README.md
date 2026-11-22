@@ -1,44 +1,49 @@
-# BLACKOP Telegram webhook (Cloudflare Workers)
+# BLACKOP Telegram webhook — deployed on Cloudflare Workers
 
-This is a lightweight webhook receiver for interactive Telegram commands. It is separate from the Python signal scheduler in GitHub Actions.
+Worker name: `blackop-telegram`
 
-## What it currently does
+Live endpoint:
+`https://blackop-telegram.anticop-blackop.workers.dev`
 
-- Responds to /start with a personalized welcome and ANTICOP attribution.
-- Responds to /help, /gold, /signals, /status, /performance, and /risk.
-- Explicitly reports that XAUUSD data is unavailable until a valid feed is integrated.
-- Does not claim to execute trades or fabricate performance.
-- Validates Telegram's webhook secret header.
+This Worker is deployed to the account's `workers.dev` subdomain. It is a Telegram webhook receiver, separate from the Python signal scheduler in GitHub Actions.
 
-## Free deployment
+## Commands implemented
 
-Cloudflare Workers currently has a Free plan. Check current limits before deployment:
-https://developers.cloudflare.com/workers/platform/limits/
+- `/start` — personalized welcome and ANTICOP attribution
+- `/help` — command guide
+- `/gold` — honest XAUUSD feed status (the current Alpha Vantage FX_DAILY integration is not valid for gold)
+- `/signals` — scheduled signal service status
+- `/status` — service status
+- `/performance` — does not invent performance metrics
+- `/risk` — risk disclaimer
 
-1. Sign in to Cloudflare and open Workers & Pages.
-2. Create a Worker and paste the contents of `worker.js`.
-3. In Worker Settings → Variables and Secrets, add these as **Secrets**:
-   - `TELEGRAM_BOT_TOKEN`: the existing BLACKOP BotFather token.
-   - `TELEGRAM_WEBHOOK_SECRET`: a newly generated random string using only letters, digits, underscores or hyphens.
-4. Deploy. Copy the HTTPS Worker URL.
-5. Set Telegram's webhook using the Bot API `setWebhook` method, with:
-   - `url`: the Worker URL
-   - `secret_token`: the exact same value as `TELEGRAM_WEBHOOK_SECRET`
-   - `allowed_updates`: `["message"]`
-6. Check the webhook with Telegram's `getWebhookInfo` method.
-7. Send /start to BLACKOP and verify the welcome reply.
+The Worker is deployed, but Telegram commands are **not active until secrets are configured and the webhook is registered**.
 
-**Security:** Never put the bot token or webhook secret in this repository, screenshots, or chat messages. Add them only in Cloudflare's encrypted Secret fields. If the bot token has ever been exposed, revoke it through @BotFather and replace the stored secret.
+## Required secrets
 
-## Important integration notes
+In Cloudflare Dashboard → Workers & Pages → `blackop-telegram` → Settings → Variables and Secrets, add these as encrypted **Secrets**:
 
-- Telegram webhook delivery and long polling cannot be active simultaneously. This Worker uses webhooks.
-- GitHub Actions scheduled alerts can continue sending messages with the same bot token; sending messages does not require polling.
-- Do not run another getUpdates polling process for this bot after setting the webhook.
-- The Worker is a command receiver, not an MT5 host. It cannot run the MQL5 Expert Advisor or execute broker trades.
-- Current command responses are intentionally transparent placeholders for features that are not yet connected to validated data or execution.
-- Do not claim that BLACKOP is a "trusted" or certified cybersecurity company unless ANTICOP has substantiation for that claim. The welcome copy describes ANTICOP as a cybersecurity company without claiming external certification.
+1. `TELEGRAM_BOT_TOKEN` — the existing token from @BotFather.
+2. `TELEGRAM_WEBHOOK_SECRET` — a strong random value containing 1–256 characters from Telegram's allowed set (A-Z, a-z, 0-9, underscore, hyphen). Use the exact same value as the GitHub Actions repository secret below.
 
-## Telegram Bot API
+Do not paste either secret into GitHub source files, commits, chat, or screenshots.
 
-https://core.telegram.org/bots/api#setwebhook
+## Register the Telegram webhook safely
+
+The repository includes a manual GitHub Actions workflow at `.github/workflows/set-telegram-webhook.yml`.
+
+In GitHub → Settings → Secrets and variables → Actions, add:
+
+- `TELEGRAM_WEBHOOK_SECRET` — the same value configured in Cloudflare.
+
+The existing scheduled workflow already references `TELEGRAM_BOT_TOKEN`. Then open Actions → **Register BLACKOP Telegram webhook** → Run workflow.
+
+The workflow calls Telegram's `setWebhook` endpoint using the Worker URL and secret. Check the action log for Telegram's `ok: true` response. Then send `/start` to BLACKOP.
+
+## Important
+
+- Telegram webhooks and long polling (`getUpdates`) cannot run simultaneously. Do not start a second polling process.
+- Existing GitHub Actions scheduled alerts can continue sending messages using the bot token; sending messages is separate from receiving updates.
+- This Worker does not host MT5 or execute trades.
+- The Worker does not yet have a validated XAUUSD price feed or verified performance reporting.
+- Never claim trading profitability or certification without evidence.
