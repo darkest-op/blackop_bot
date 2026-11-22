@@ -1,0 +1,57 @@
+name: Register BLACKOP Telegram webhook
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  register-webhook:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Register Cloudflare Worker as Telegram webhook
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_WEBHOOK_SECRET:-}" ]; then
+            echo "Missing TELEGRAM_BOT_TOKEN or TELEGRAM_WEBHOOK_SECRET repository secret."
+            exit 1
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+            --request POST \
+            --data-urlencode "url=https://blackop-telegram.anticop-blackop.workers.dev/" \
+            --data-urlencode "secret_token=${TELEGRAM_WEBHOOK_SECRET}" \
+            --data-urlencode 'allowed_updates=["message"]' \
+            --data-urlencode "drop_pending_updates=false" \
+            --output webhook-result.json
+
+          python - <<'PY'
+          import json
+          with open("webhook-result.json", encoding="utf-8") as f:
+              result = json.load(f)
+          if not result.get("ok"):
+              raise SystemExit("Telegram rejected webhook registration: " + str(result))
+          print("Telegram webhook registered successfully.")
+          print(result.get("description", ""))
+          PY
+
+          curl --fail-with-body --silent --show-error \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo" \
+            --output webhook-info.json
+
+          python - <<'PY'
+          import json
+          with open("webhook-info.json", encoding="utf-8") as f:
+              result = json.load(f)
+          if not result.get("ok"):
+              raise SystemExit("Could not verify Telegram webhook: " + str(result))
+          info = result.get("result", {})
+          print("Webhook URL:", info.get("url", "(none)"))
+          print("Pending updates:", info.get("pending_update_count", 0))
+          print("Last delivery error:", info.get("last_error_message", "none"))
+          PY
